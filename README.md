@@ -25,7 +25,8 @@ Interestingly, larger models, particularly in the Pythia family, often showed in
 3. Component Analysis: MLP vs. Attention
 One of the most striking findings from the ablation study is the differential impact of MLP (Multi-Layer Perceptron) and Attention components on refusal behavior:
 
-MLP layers consistently demonstrate a significantly higher average impact on refusal behavior (abs_delta of 0.6947) compared to Attention heads (abs_delta of 0.0000). This implies that the MLP sublayers are the primary computational units involved in encoding and processing information pertinent to generating refusal responses. Ablating attention heads in this setup had negligible impact, suggesting their role might be more about contextualizing input rather than directly computing refusal intent in these specific scenarios.
+MLP layers consistently demonstrate a significantly higher average impact on refusal behavior (abs_delta of 0.6947) compared to Attention heads (abs_delta of 0.0000). This implies that the MLP sublayers are the primary computational units involved in encoding and processing information pertinent to generating refusal responses. Ablating attention heads in this setup had negligible impact, suggesting their role might be more about contextualizing input rather than directly computing refusal intent in these specific scenarios
+
 4. Steering Effectiveness (Causal Intervention)
 Following the identification of specialist layers, we calculated steering vectors—the difference between mean activations for harmful vs. harmless prompts at the specialist layer's residual stream output. We then tested the causal effect of adding or subtracting these vectors on benign prompts to induce or suppress refusal.
 
@@ -40,10 +41,12 @@ For example:
 
 gpt2-small: Neuron 756 in Layer 5 (Differential: -0.6870, meaning it activates more for harmless prompts or less for harmful ones).
 gpt2-large: Neuron 1867 in Layer 0 (Differential: 0.9814, meaning it activates more for harmful prompts).
+
 6. Sparse Ablation of Top Neurons
 To verify the importance of these top neurons, we performed sparse ablations, zeroing out the activations of the top 10 identified neurons in the specialist layers when processing harmful prompts.
 
 Ablating these top 10 neurons caused an average change of 0.0122 in logit difference, predominantly reducing refusal. While the average effect might seem modest, this demonstrates that even a small subset of neurons can contribute to the model's refusal behavior, offering a pathway for targeted interventions.
+
 7. Attention Head Analysis
 Our analysis of individual attention heads, particularly in gpt2-small and pythia-410m at their respective specialist layers, showed negligible differential impact. This reinforces the finding that MLPs are the dominant component for refusal behavior in the context of our current setup.
 
@@ -52,5 +55,6 @@ MLPs are the primary drivers of refusal behavior: Their ablation leads to signif
 Pythia models exhibit higher overall sensitivity to ablations, suggesting potentially more distributed or sensitive refusal mechanisms.
 Refusal is causally steerable: We can predictably increase or decrease refusal tendencies by intervening with steering vectors at specific specialist layers.
 Specific neurons contribute to refusal: A small set of highly active MLP neurons can be identified and, when ablated, influence refusal behavior.
+
 Conclusion
 This research provides strong evidence for the localized and steerable nature of refusal behavior in LLMs, primarily mediated by MLP layers. The ability to identify specialist layers and even individual neurons involved in refusal opens avenues for developing more robust and transparent safety interventions, allowing for fine-grained control over model alignment without retraining.
