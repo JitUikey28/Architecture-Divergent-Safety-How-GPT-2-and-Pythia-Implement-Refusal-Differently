@@ -1,54 +1,101 @@
-# Architecture-Divergent Safety: Mechanistic Interpretability of Refusal
+# Architecture-Divergent Safety How GPT-2 and Pythia Implement Refusal Differently
 
-This repository contains the implementation of a multi-stage mechanistic audit investigating how safety behaviors—specifically refusal—are represented within different neural architectures. This research challenges the assumption of "universal" safety circuits.
-
-## 🚀 Research Overview
-Traditional safety assessments rely on behavioral outputs, which can conceal underlying risks like reward hacking.This project utilizes **Mechanistic Interpretability** to move beyond the "black box" view of LLMs:
-* **Localization**: Identifies that refusal is primarily localized in MLP sublayers rather than attention mechanisms.
-* **Causal Validation**: Uses activation steering to prove that specific layers control model compliance or refusal.
-* **Mapping**: Provides a microscopic view of safety by isolating sparse neuronal circuits.
+Official implementation of the three-stage experimental pipeline from the paper:  
+**"Architecture-Divergent Safety: How GPT-2 and Pythia Implement Refusal Differently"** *Jitesh Uikey et al.*
 
 ---
 
-## 🛠 Project Structure: The 3-Stage Pipeline
+## 🧠 Overview
+This repository investigates whether refusal behavior in transformer language models follows a universal mechanistic structure or varies across architectures. We conduct a multi-stage mechanistic audit across:
 
-The codebase is organized into three experiments corresponding to the stages mentioned in the paper. All scripts share the same random seeds (42, 123, 456) to ensure reproducibility.
+* **GPT-2:** Small, Medium, Large
+* **Pythia:** 410M, 1B
 
-### Stage 1: Differential Safety Localization
-**Goal**: Identify "Specialist Layers" with the highest differential contribution to harmful vs. harmless inputs.
-* **Method**: Systematic **Zero Ablation** of MLP and Attention components.
-* **Key Metric**: **Safety Shift Score (SSS)**, where an SSS > 1 indicates a disproportionate impact on harmful inputs.
-* **Implementation**: `Stage 1 Discovery & Localization.ipynb`
+The pipeline progressively localizes, validates, and refines safety circuitry using:
+1.  **Differential Localization** (Layer-Level Audit)
+2.  **Causal Activation Steering** (Subspace Intervention)
+3.  **Sparse Neuron-Level Analysis** (Microscopic Circuit Mapping)
 
-### Stage 2: Causal Activation Steering
-**Goal**: Test if the identified layers causally control refusal behavior through representational geometry.
-* **Method**: Constructing **Refusal Direction Vectors** ($v = \mu_{harmful} - \mu_{harmless}$).
-* **Intervention**: Applying positive and negative steering ($\pm \alpha v$) to benign prompts to observe behavior shifts.
-* **Implementation**: `Stage 2 Causal Verification.ipynb`
-
-### Stage 3: Sparse Neuron-Level Analysis
-**Goal**: Refine localization from the layer level down to individual neurons.
-* **Method**: Ranking neurons by differential activation and performing sparse ablation on the top-k (5 or 10) neurons.
-* **Insight**: Ablating only a small ensemble of neurons can significantly shift refusal logits, confirming sparse but structured circuitry.
-* **Implementation**: `Stage 3 High Resolution Neuron Mapping.ipynb`
+We introduce the **Safety Shift Score (SSS)** to quantify safety specialization.
 
 ---
 
-## 📊 Key Findings
+## ⚙️ Reproducibility
+All experiments use fixed random seeds: `[42, 123, 456]`
 
-* **Architectural Divergence**: GPT-2 Small shows strong bidirectional control, while larger models or Pythia variants exhibit unstable or inverse steering patterns.
-* **Depth Migration**: Safety mechanisms tend to be pushed to later layers as model size increases.
-* **Specialist Layers**:
-    * **GPT-2 Small**: Layer 11 (SSS: 4.822)
-    * **Pythia-1B**: Layer 0 (SSS: 7.540) 
-    * **GPT-2 Large**: Layer 35 (SSS: 1.458) 
+* **Averaging:** Results are averaged across seeds.
+* **Error bars:** 95% confidence intervals computed via standard error.
+* **Mode:** Models evaluated in inference mode (no fine-tuning).
 
 ---
 
-## 💻 Setup and Usage
+## 📊 Stage 1 — Differential Safety Localization
+**Goal:** Identify safety-specialized layers using systematic zero ablation.
 
-### Prerequisites
-* T4 GPU (At least 16 GB RAM)
-* PyTorch
-* TransformerLens (recommended for activation patching and ablation)
-* Datasets: The experiments use a custom prompt dataset covering Safety, IOI, Fact, and Math tasks.
+* **Refusal Logit Difference:** $$R(p) = \text{logit}(\text{"I"}) - \text{logit}(\text{"Sure"})$$
+    Captures the internal preference between refusal and compliance.
+* **Safety Shift Score (SSS):** $$SSS = \frac{|\Delta R_{\text{harmful}}|}{|\Delta R_{\text{harmless}}| + \epsilon}$$
+    * **SSS > 1:** Indicates a safety-specialized component.
+    * **Specialist Layer:** The MLP layer with the highest mean SSS.
+
+**Implementation:** `Stage 1 Discovery & Localization.ipynb`
+
+---
+
+## 🧭 Stage 2 — Causal Activation Steering
+**Goal:** Test whether Specialist Layers causally control refusal behavior.
+
+* **Steering Vector ($v$):** $v = \mu_{\text{harmful}} - \mu_{\text{harmless}}$ (computed at the Specialist Layer).
+* **Intervention:**
+    * Positive: $h' = h + \alpha v$
+    * Negative: $h' = h - \alpha v$
+    * Scale: $\alpha = 1.0$
+
+**Implementation:** `Stage 2 Causal Verification.ipynb`
+
+---
+
+## 🧩 Stage 3 — Sparse Neuron-Level Analysis
+**Goal:** Refine safety localization down to individual neurons.
+
+1.  **Extract:** Post-MLP activations.
+2.  **Differential:** $d_i = \mu_{\text{harmful},i} - \mu_{\text{harmless},i}$
+3.  **Rank:** Select top-$k$ neurons ($k = 5, 10$) by $|d_i|$.
+4.  **Ablate:** Zero only those neurons and recompute $R$ and $SSS$.
+
+**Implementation:** `Stage 3 High Resolution Neuron Mapping.ipynb`
+
+---
+
+## 🧪 Prompt Dataset
+Harmful and harmless prompts are paired (52 total) to isolate safety-specific degradation from general utility loss.
+
+| Task | Harmful | Harmless |
+| :--- | :--- | :--- |
+| Safety | 9 | 9 |
+| IOI | 6 | 6 |
+| Fact | 6 | 6 |
+| Math | 5 | 5 |
+| **Total** | **26** | **26** |
+
+---
+
+## 📈 Key Findings
+Results demonstrate that refusal geometry is architecture-dependent rather than universal.
+
+| Model | Specialist Layer | Steering Behavior |
+| :--- | :--- | :--- |
+| **GPT-2 Small** | Late layer | Strong bidirectional |
+| **GPT-2 Medium** | Early layer | Partial |
+| **GPT-2 Large** | Deep layer | Unstable / inverse |
+| **Pythia-410M** | Mid | Inconsistent |
+| **Pythia-1B** | Early | Suppression-dominant |
+
+---
+
+## 🔬 Research Contributions
+* **Architecture-aware safety audits.**
+* **Refusal direction replication** across model families.
+* **Sparse causal circuit identification.**
+* **Cross-family mechanistic comparison** challenging the assumption of universal refusal circuits.
+
